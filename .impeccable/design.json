@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T22:49:48.971743+00:00",
+  "title": "Design System: Wordkind",
+  "extensions": {
+    "typographyMeta": {
+      "body": {
+        "displayName": "DM Sans",
+        "purpose": "Self-hosted under the CSS family name DM."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tile",
+        "value": "0 3px 0 #dcdfd0",
+        "purpose": "Unsolved board cells."
+      },
+      {
+        "name": "tile-solved",
+        "value": "0 3px 0 #bacd9f",
+        "purpose": "Completed mint cells."
+      },
+      {
+        "name": "wheel-letter",
+        "value": "0 3px 0 #d2c6e2",
+        "purpose": "White wheel letter buttons."
+      },
+      {
+        "name": "settings-drawer",
+        "value": "-15px 0 60px #303a3015",
+        "purpose": "Desktop settings drawer."
+      },
+      {
+        "name": "settings-sheet",
+        "value": "0 -12px 70px #303a3020",
+        "purpose": "Phone settings sheet."
+      },
+      {
+        "name": "wallet-flight",
+        "value": "0 8px 25px #45633b20",
+        "purpose": "Flying bonus-word token."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Solved words and game feedback."
+      },
+      {
+        "name": "control-transition",
+        "value": "150ms",
+        "purpose": "Button background, colour and press movement."
+      },
+      {
+        "name": "tile-in",
+        "value": "500ms",
+        "purpose": "Solved cells with per-tile delay."
+      },
+      {
+        "name": "wallet-flight",
+        "value": "850ms cubic-bezier(.22,1,.36,1)",
+        "purpose": "Move a new bonus word from input to header wallet."
+      },
+      {
+        "name": "wallet-bounce",
+        "value": "320ms ease-out",
+        "purpose": "Wallet icon confirmation after the token arrives."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Replace word flight with text feedback; disable animation and show the completed tutorial."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone-max",
+        "value": "650px"
+      },
+      {
+        "name": "narrow-max",
+        "value": "374px"
+      },
+      {
+        "name": "short-phone",
+        "value": "(max-height: 740px) and (max-width: 650px)"
+      },
+      {
+        "name": "small-phone-max",
+        "value": "359px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width invitation or confirmation action.",
+      "html": "<button class=\"ds-primary\">Create an invite link</button>",
+      "css": ".ds-primary{font:13px DM,sans-serif;width:100%;min-height:46px;border:0;border-radius:10px;padding:14px 16px;background:var(--ink,#303a30);color:var(--white,#fffef9);cursor:pointer;transition:background .15s,transform .15s}.ds-primary:hover{background:#4c5944}.ds-primary:active{transform:translateY(1px)}.ds-primary:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}"
+    },
+    {
+      "name": "Text button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Quiet supporting action.",
+      "html": "<button class=\"ds-text\">How to play</button>",
+      "css": ".ds-text{font:13px DM,sans-serif;background:transparent;color:var(--ink,#303a30);border:0;padding:10px 0;min-height:40px;cursor:pointer}.ds-text:hover{color:var(--purple,#72638e)}.ds-text:active{transform:translateY(1px)}.ds-text:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled dialog field.",
+      "html": "<label class=\"ds-label\">Your nickname<input class=\"ds-input\" placeholder=\"Chai champion\"></label>",
+      "css": ".ds-label{display:block;font:12px DM,sans-serif;color:var(--ink,#303a30)}.ds-input{display:block;margin-top:7px;font:14px DM,sans-serif;color:var(--ink,#303a30);background:var(--white,#fffef9);border:1px solid #cfd4c3;border-radius:8px;padding:12px}.ds-input:hover{border-color:var(--purple,#72638e)}.ds-input:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}"
+    },
+    {
+      "name": "Word checklist",
+      "kind": "chip",
+      "refersTo": "word-chip",
+      "description": "Word lengths and completion counts in the progress dialog.",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip\">4 letters \u00b7 0/2</span><span class=\"ds-chip ds-complete\">3 letters \u00b7 1/1</span></div>",
+      "css": ".ds-chips{display:flex;gap:5px}.ds-chip{font:14px DM,sans-serif;color:#58614d;background:#e3e6d8;padding:12px 15px;border-radius:5px;transition:background .2s,color .2s}.ds-chip.ds-complete{background:var(--mint,#d6e8ba);color:#405734}"
+    },
+    {
+      "name": "Board tiles",
+      "kind": "custom",
+      "description": "Aligned tiles with bottom shadows and mint completion.",
+      "html": "<div class=\"ds-tiles\" aria-label=\"Solved word TEA\"><span>T</span><span>E</span><span>A</span></div>",
+      "css": ".ds-tiles{display:flex;gap:5px}.ds-tiles span{width:43px;height:43px;border-radius:8px;background:var(--mint,#d6e8ba);color:#405734;box-shadow:0 3px 0 #bacd9f;display:grid;place-items:center;font:800 20px Manrope,sans-serif}"
+    },
+    {
+      "name": "Wheel tool",
+      "kind": "button",
+      "refersTo": "tool-button",
+      "description": "Matching Shuffle and Hint controls beside the wheel.",
+      "html": "<button class=\"ds-tool\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 6h3c4 0 6 12 10 12h5m-4-4 4 4-4 4M3 18h3c1.5 0 3-2 4-4m4-4c1-2 2-4 4-4h3m-4-4 4 4-4 4\"/></svg><span>Shuffle</span></button>",
+      "css": ".ds-tool{width:64px;height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:0;border-radius:12px;background:none;color:var(--muted,#606657);font:11px DM,sans-serif;padding:7px 0;cursor:pointer}.ds-tool svg{width:23px;height:23px;fill:none;stroke:#495840;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-tool:hover{background:#e9ecdf}.ds-tool:active{transform:translateY(1px)}.ds-tool:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}"
+    },
+    {
+      "name": "Menu mode navigation",
+      "kind": "nav",
+      "description": "Solo and friend choices inside the settings drawer.",
+      "html": "<nav class=\"ds-menu\" aria-label=\"Game modes\"><button class=\"ds-mode ds-active\" aria-pressed=\"true\">Solo</button><button class=\"ds-mode\">With a friend</button></nav>",
+      "css": ".ds-menu{display:flex;background:#e7eadd;border-radius:11px;padding:4px;gap:5px}.ds-mode{flex:1;border:0;border-radius:8px;padding:11px 8px;min-height:44px;background:none;color:var(--ink,#303a30);font:13px DM,sans-serif;cursor:pointer}.ds-mode.ds-active{background:var(--white,#fffef9)}.ds-mode:hover{background:var(--white,#fffef9)}.ds-mode:active{transform:translateY(1px)}.ds-mode:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}"
+    },
+    {
+      "name": "Library preview",
+      "kind": "card",
+      "description": "A selectable puzzle preview inside the library dialog.",
+      "html": "<button class=\"ds-library\"><span class=\"ds-mini\" aria-hidden=\"true\"><i></i><i></i><i></i><i></i></span><b>Puzzle 01</b><small>Easy</small></button>",
+      "css": ".ds-library{border:1px solid #d8decf;border-radius:9px;background:var(--white,#fffef9);color:var(--ink,#303a30);padding:10px;display:flex;flex-direction:column;align-items:center;gap:7px;min-height:95px;cursor:pointer}.ds-library:hover{background:#eaf0df}.ds-library:active{transform:translateY(1px)}.ds-library:focus-visible{outline:3px solid var(--purple,#72638e);outline-offset:4px}.ds-library b{font:800 13px Manrope,sans-serif}.ds-library small{font:11px DM,sans-serif;color:var(--muted,#606657)}.ds-mini{display:grid;grid-template-columns:repeat(2,4px);gap:1px;height:42px;align-content:center}.ds-mini i{width:4px;height:4px;background:#abbc91;border-radius:1px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Cream paper, lilac wheel, mint tiles",
+    "overview": "Wordkind opens directly on the puzzle. A compact header, centred board, word input and letter wheel fill a single narrow column. Shuffle and Hint sit symmetrically beside the wheel. The game has no enclosing dashboard card.\n\nThe user chose a pastel, minimal interface with light desi humour and rejected the earlier cluttered page. Difficulty, modes, library, instructions, sound and visit statistics live in the menu. The wallet has its own drawer. Keep attention on the board and wheel until the player requests another task.",
+    "keyCharacteristics": [
+      "A game-only screen on cream paper.",
+      "A lilac wheel with raised letter buttons and mint completed tiles.",
+      "Symmetric tools beside the centred wheel.",
+      "Supporting tasks in dialogs and drawers.",
+      "Event-driven motion with reduced-motion alternatives."
+    ],
+    "rules": [],
+    "dos": [
+      "Do keep the board and wheel central in one column.",
+      "Do align Shuffle and Hint symmetrically around the wheel.",
+      "Do keep wallet contents, settings and visit statistics behind their controls.",
+      "Do connect bonus-word motion to the header wallet icon.",
+      "Do preserve typed input, visible focus and reduced-motion feedback.",
+      "Do retain the original SVG icon and approved pastel palette."
+    ],
+    "donts": [
+      "Don't restore marketing introductions, permanent side rails or invitation cards on the play screen.",
+      "Don't show the word checklist or visit statistics permanently beside the board.",
+      "Don't turn the temporary wallet into cash, coins or paid rewards.",
+      "Don't invent player activity, scores or saved streaks.",
+      "Don't add perpetual decorative motion or rely on colour alone."
+    ]
+  }
+}
