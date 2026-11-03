@@ -64,6 +64,7 @@ let puzzles = [],
   roomClockOffset = 0,
   you,
   submitting = false,
+  pendingFound = new Set(),
   celebrated = false,
   soloDifficulty = "easy",
   toastTimer,
@@ -141,6 +142,7 @@ function setPuzzle(id) {
   puzzle = puzzles.find((p) => p.id === id);
   found = [];
   bonus = [];
+  pendingFound.clear();
   hints.clear();
   selected = [];
   celebrated = false;
@@ -371,7 +373,7 @@ function spellable(word) {
     return true;
   });
 }
-function result(word, result) {
+function result(word, result, clearInput = true) {
   if (result === "found") {
     if (!found.includes(word)) {
       found.push(word);
@@ -403,7 +405,7 @@ function result(word, result) {
     $("#word-input").parentElement.classList.add("shake");
     setTimeout(() => $(".word-entry").classList.remove("shake"), 350);
   }
-  clearWord();
+  if (clearInput) clearWord();
   if (!room && found.length === puzzle.slots.length && !celebrated) {
     celebrated = true;
     run.ended = true;
@@ -444,8 +446,19 @@ async function submit() {
       toast("Connection lost. Reconnect before submitting.");
       return;
     }
-    await sendRoomAction({ type: "guess", word });
     clearWord();
+    if (!spellable(word)) {
+      toast("Use only the wheel’s letters, once per tile.");
+      return;
+    }
+    if (found.includes(word)) return result(word, "duplicate");
+    if (puzzle.slots.some((s) => s.word === word)) {
+      pendingFound.add(word);
+      result(word, "found");
+      renderRace();
+    }
+    await sendRoomAction({ type: "guess", word });
+    pendingFound.delete(word);
     return;
   }
   if (found.includes(word) || bonus.includes(word))
@@ -687,10 +700,11 @@ function applyRoomState(msg) {
       puzzle.id !== room.puzzleId)
   )
     setPuzzle(room.puzzleId);
-  const added = me.found.filter((w) => !found.includes(w)),
-    changed = found.length !== me.found.length || added.length;
+  const mine = [...new Set([...me.found, ...pendingFound])],
+    added = mine.filter((w) => !found.includes(w)),
+    changed = found.length !== mine.length || added.length;
   visit.words += added.length;
-  found = [...me.found];
+  found = mine;
   if (changed) renderBoard(added[0]);
   renderSession();
   updateControls();
@@ -726,8 +740,11 @@ async function sendRoomAction(action) {
     roomOnline = true;
     if (msg.guess && room?.round === round && room?.match === match) {
       if (msg.guess.result === "early") toast("The round hasn’t started yet.");
-      else if (msg.guess.result !== "inactive")
-        result(msg.guess.word, msg.guess.result);
+      else if (
+        msg.guess.result !== "inactive" &&
+        !pendingFound.has(msg.guess.word)
+      )
+        result(msg.guess.word, msg.guess.result, false);
     }
     applyRoomState(msg);
     return true;
@@ -755,6 +772,7 @@ async function connectRoom(code) {
     applyRoomState(msg);
     async function poll() {
       if (version !== connectionVersion) return;
+      const started = Date.now();
       try {
         const state = await api(`/api/rooms/${code}`);
         if (version !== connectionVersion) return;
@@ -770,7 +788,14 @@ async function connectRoom(code) {
         }
       }
       if (version === connectionVersion)
-        roomPoll = setTimeout(poll, room?.status === "playing" ? 750 : 1500);
+        roomPoll = setTimeout(
+          poll,
+          Math.max(
+            0,
+            (roomOnline && room?.status === "playing" ? 250 : 750) -
+              (Date.now() - started),
+          ),
+        );
     }
     roomPoll = setTimeout(poll, 750);
   } catch (error) {
@@ -803,7 +828,7 @@ function renderRace() {
   strip.hidden = false;
   const me = room.players.find((p) => p.id === you),
     other = room.players.find((p) => p.id !== you);
-  strip.innerHTML = `<div class="racer you"><span>${esc(me.name)} · You <b>${me.score}</b></span><progress max="${puzzle.slots.length}" value="${me.found.length}" aria-label="Your words found"></progress></div><span class="race-status"></span><div class="racer them"><span>${esc(other?.name || "Waiting…")} <b>${other?.score || 0}</b> ${other && !other.online ? "· Offline" : ""}</span><progress max="${puzzle.slots.length}" value="${other?.found.length || 0}" aria-label="Opponent words found"></progress></div>`;
+  strip.innerHTML = `<div class="racer you"><span>${esc(me.name)} · You <b>${me.score}</b></span><progress max="${puzzle.slots.length}" value="${found.length}" aria-label="Your words found"></progress></div><span class="race-status"></span><div class="racer them"><span>${esc(other?.name || "Waiting…")} <b>${other?.score || 0}</b> ${other && !other.online ? "· Offline" : ""}</span><progress max="${puzzle.slots.length}" value="${other?.found.length || 0}" aria-label="Opponent words found"></progress></div>`;
 }
 function updateClock() {
   if (!puzzle) return;

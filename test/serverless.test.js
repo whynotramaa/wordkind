@@ -217,3 +217,30 @@ test("solo works without Redis and unconfigured multiplayer fails without a memo
     if (oldToken !== undefined) process.env.UPSTASH_REDIS_REST_TOKEN = oldToken;
   }
 });
+
+test("frequent polls read without writes until the heartbeat is due", async () => {
+  let raw, writes = 0;
+  const store = {
+    async create(code, room) { raw = JSON.stringify(room); return true; },
+    async read() { return raw; },
+    async replace(code, old, room) {
+      expect(raw).toBe(old);
+      raw = JSON.stringify(room);
+      writes++;
+      return true;
+    },
+  };
+  const session = crypto.randomUUID();
+  const { code } = await createRoom(store, { difficulty: "easy", seconds: 60 });
+  await updateRoom(store, code, session, { type: "join" });
+  const before = writes;
+  for (let i = 0; i < 10; i++)
+    await updateRoom(store, code, session, { type: "poll" });
+  expect(writes).toBe(before);
+  const room = JSON.parse(raw);
+  room.players[0].lastSeen = Date.now() - 1600;
+  raw = JSON.stringify(room);
+  await updateRoom(store, code, session, { type: "poll" });
+  expect(writes).toBe(before + 1);
+  await expect(updateRoom(store, code, crypto.randomUUID(), { type: "poll" })).rejects.toMatchObject({ status: 403 });
+});

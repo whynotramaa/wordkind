@@ -257,6 +257,24 @@ try {
   await page.locator("#countdown").waitFor({ state: "visible" });
   await page.screenshot({ path: `${dir}/countdown.png`, fullPage: true });
   await page.locator("#countdown").waitFor({ state: "hidden" });
+  // A slow move acknowledgement must not block or erase the next word.
+  let delayedGuess = false;
+  await page.route("**/api/rooms/*", async (route) => {
+    if (route.request().method() === "POST" && route.request().postDataJSON()?.type === "guess") {
+      delayedGuess = true;
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+    await route.continue();
+  });
+  const racePuzzle = await current(page);
+  await page.locator("#word-input").fill(racePuzzle.slots[0].word);
+  await page.locator("#word-input").press("Enter");
+  assert.equal(await page.locator("#word-input").inputValue(), "");
+  await page.locator("#word-input").fill("NEXT");
+  await page.waitForTimeout(1200);
+  assert.equal(delayedGuess, true);
+  assert.equal(await page.locator("#word-input").inputValue(), "NEXT");
+  await page.unroute("**/api/rooms/*");
   for (let r = 1; r <= 2; r++) {
     await solve(page);
     await page.locator("#next-round").waitFor();
