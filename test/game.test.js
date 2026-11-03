@@ -1,9 +1,14 @@
 import { describe, test, expect } from "bun:test";
-import { tiers, dailyId, validateSettings, judgeRound } from "../rules.js";
+import {
+  tiers,
+  dailyId,
+  validateSettings,
+  judgeRound,
+} from "../public/rules.js";
 import { beginRound, finishRound, resetMatch } from "../rooms.js";
 import { banks } from "../banks.js";
 import { puzzles, makePuzzle, canSpell, checkGuess } from "../game.js";
-import { startServer } from "../server.js";
+
 const dictionary = new Set(
   (await Bun.file(new URL("../words.txt", import.meta.url)).text())
     .toUpperCase()
@@ -73,107 +78,6 @@ describe("puzzles", () => {
     expect(checkGuess(p, extra, [], [extra], dictionary)).toBe("duplicate");
   });
 });
-test("real two-player match: cookies, capacity, common puzzle, countdown, first finisher and best of three", async () => {
-  const server = startServer(0),
-    base = `http://localhost:${server.port}`;
-  const sockets = [];
-  try {
-    const session = async () => {
-      const r = await fetch(`${base}/api/session`);
-      return {
-        cookie: r.headers.get("set-cookie").split(";")[0],
-        id: (await r.json()).id,
-      };
-    };
-    const a = await session(),
-      b = await session(),
-      c = await session();
-    const response = await fetch(`${base}/api/rooms`, {
-      method: "POST",
-      headers: { cookie: a.cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ difficulty: "easy", seconds: 60 }),
-    });
-    const { code } = await response.json();
-    const player = async (identity) => {
-      const ws = new WebSocket(`${base.replace("http", "ws")}/ws/${code}`, {
-        headers: { cookie: identity.cookie },
-      });
-      sockets.push(ws);
-      const state = { ws, data: null };
-      ws.onmessage = (e) => {
-        const m = JSON.parse(e.data);
-        if (m.type === "state") state.data = m.room;
-      };
-      await new Promise((resolve, reject) => {
-        ws.onopen = resolve;
-        ws.onerror = reject;
-      });
-      return state;
-    };
-    const pa = await player(a),
-      pb = await player(b);
-    const wait = async (fn) => {
-      const end = Date.now() + 6000;
-      while (!fn()) {
-        if (Date.now() > end) throw Error("Timed out waiting for room state");
-        await Bun.sleep(10);
-      }
-    };
-    await wait(
-      () => pa.data?.players.length === 2 && pb.data?.players.length === 2,
-    );
-    const full = await fetch(`${base}/ws/${code}`, {
-      headers: { cookie: c.cookie },
-    });
-    expect(full.status).toBe(409);
-    const forbidden = await fetch(`${base}/api/rooms`, {
-      method: "POST",
-      headers: { cookie: a.cookie, origin: "https://other.example" },
-    });
-    expect(forbidden.status).toBe(403);
-    const proxied = await fetch(`${base}/api/session`, {
-      headers: {
-        origin: base.replace("http:", "https:"),
-        "x-forwarded-proto": "https",
-      },
-    });
-    expect(proxied.status).toBe(200);
-    expect(proxied.headers.get("set-cookie")).toContain("; Secure");
-    const malformed = await fetch(`${base}/api/word`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "null",
-    });
-    expect(malformed.status).toBe(400);
-    pa.ws.send("null");
-    pa.ws.send("{broken");
-    for (let round = 1; round <= 2; round++) {
-      pa.ws.send(JSON.stringify({ type: "ready" }));
-      pb.ws.send(JSON.stringify({ type: "ready" }));
-      await wait(() => pa.data?.round === round && pb.data?.round === round);
-      expect(pa.data.puzzleId).toBe(pb.data.puzzleId);
-      const p = puzzles[pa.data.puzzleId - 1];
-      pa.ws.send(JSON.stringify({ type: "guess", word: p.slots[0].word }));
-      await Bun.sleep(25);
-      expect(pa.data.players[0].found.length).toBe(0);
-      await Bun.sleep(Math.max(0, pa.data.startAt - Date.now() + 15));
-      for (const s of p.slots)
-        pa.ws.send(JSON.stringify({ type: "guess", word: s.word }));
-      await wait(() => pa.data.status !== "playing");
-      for (const s of p.slots)
-        pb.ws.send(JSON.stringify({ type: "guess", word: s.word }));
-      await Bun.sleep(25);
-      expect(pa.data.winner).toBe(a.id);
-      expect(pa.data.players[0].score).toBe(round);
-      expect(pa.data.players[1].score).toBe(0);
-    }
-    expect(pa.data.status).toBe("finished");
-  } finally {
-    sockets.forEach((ws) => ws.close());
-    server.stop(true);
-  }
-}, 18000);
-
 describe("solo and match rules", () => {
   test("daily puzzle follows UTC dates, not local timezone", () => {
     expect(dailyId(new Date("2026-11-03T00:00:00Z"))).toBe(

@@ -6,7 +6,7 @@ The user explicitly requested the Stageshow skill. Its focus, framing and cause-
 
 The `phone-touch` gold example provided a three-beat pattern: context, gesture, held result. The word-wheel tutorial adapts that pattern to a direct geometric game board: T/E/A starts unfilled, a measured path connects wheel positions, then the same word tiles become mint. It is labeled as a demonstration, never actual player activity. It runs once and can replay on request. Reduced motion shows the final, understandable state.
 
-The game uses its own HTML/CSS components rather than importing the React kit. The app's zero-runtime-dependency constraint and native Bun client remain intact. No fake phone chrome, invented player activity, or illustrative balances are shown.
+The game uses its own HTML/CSS components rather than importing the React kit. Next.js now renders the game markup while the existing browser controller owns game interactions. Bun is the package manager and test runner. No fake phone chrome, invented player activity, or illustrative balances are shown.
 
 ## UI checks
 

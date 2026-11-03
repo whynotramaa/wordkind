@@ -1,6 +1,6 @@
-import { startServer } from "../server.js";
-const server = startServer(0),
-  base = `http://localhost:${server.port}`;
+import { startApp } from "./helpers/app-server.mjs";
+const server = await startApp(),
+  base = server.base;
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import assert from "node:assert/strict";
@@ -96,5 +96,5 @@ try {
   console.log(JSON.stringify(reports, null, 2));
 } finally {
   await b.close();
-  server.stop(true);
+  server.stop();
 }

@@ -6,7 +6,7 @@
 web
 
 ## Stack
-Bun, explicitly requested by the user for speed. Built-in HTTP server and WebSockets; plain HTML/CSS/JavaScript client. No runtime dependencies. Fonts and the original SVG icon are served locally.
+Next.js App Router with React-rendered game markup, the existing browser game controller, and Node.js route handlers. Bun remains the package manager and test runner. Active friend rooms use Upstash Redis over HTTPS; HTTP polling replaces the earlier Bun WebSocket server. Fonts and the original icon are served locally.
 
 ## Users and purpose
 People who enjoy casual word puzzles alone or in a live race with a friend. Open the game, receive a random puzzle, connect letters on a wheel, and fill a shaped word board. Valid additional words go into a temporary word wallet.
@@ -40,9 +40,11 @@ The menu opens a native dialog drawer on desktop and a bottom sheet on phones. I
 Wordkind is the working name. The user approved warm cream, a lilac letter wheel and mint solved tiles. Keep chunky game tiles, readable board states and paper-like scorecards. The user rejected a cluttered page and requested a game-only screen, with supporting controls behind the menu. The icon reference uses condensed black lettering, yellow, lilac and coral. The shipped original SVG follows that direction without copying the supplied SOLD icon. Keep the interface playful, subtle, pastel, minimal and easy on the eyes. Keep desi humour brief and friendly.
 
 ## Operating constraints
-No accounts, database, saved history or progression. The wallet, recent-puzzle list, sound preference and visit statistics live in page memory. Anonymous session cookies identify reconnecting players without accounts. Player names are nicknames. Rooms live in one server process for at most two hours; an active match allows a 20-second reconnect grace period. Restarting the server clears rooms. No external services, credentials, analytics or tracking are implemented.
+No accounts, saved history or progression. The wallet, recent-puzzle list, sound preference and visit statistics live in page memory. Anonymous HttpOnly session cookies identify reconnecting players; public player IDs are separate. The user explicitly approved Upstash Redis for temporary active rooms. Room keys expire two hours after creation and updates preserve that TTL. There is no persistent account or history database.
 
-Hosting must support a long-running Bun server and WebSockets. Localhost links work only on the same device; a reachable origin is needed for remote friends. Friendly races are not a prize-bearing anti-cheat system.
+Hosting uses Next.js serverless route handlers. No process-local room memory, WebSocket server or background timer is required. Atomic Redis updates protect scoring across simultaneous requests. Countdown, timeout and reconnect transitions use stored timestamps and are evaluated on requests. A player has a 20-second reconnect grace period; missing heartbeats are detected after five seconds. Solo play works without Redis configuration. Friend matches require server-only Upstash REST URL/token variables. The supplied Redis credentials are configured locally in an ignored environment file. A live Next.js/Upstash room test passed and its test room was deleted. No public serverless deployment has been provisioned.
+
+Friendly races are not a prize-bearing anti-cheat system. Localhost links work only on the same device; a reachable public URL is needed for remote friends.
 
 ## Open decisions
 Production hosting and a domain are not provided. The wallet has no cash value, coins or spending mechanics. No wallet economy is part of the implemented scope.

@@ -51,7 +51,10 @@ let puzzles = [],
   moved = false,
   startPoint,
   room = null,
-  socket = null,
+  roomCode = null,
+  roomPoll = null,
+  roomOnline = false,
+  roomClockOffset = 0,
   you,
   submitting = false,
   celebrated = false,
@@ -111,13 +114,17 @@ $("#dialog").addEventListener("click", (e) => {
 });
 async function api(path, data) {
   const response = await fetch(path, {
+    signal: AbortSignal.timeout(10000),
     method: data ? "POST" : "GET",
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
   });
   const result = await response.json();
   if (!response.ok)
-    throw Error(result.error || "Something went wrong. Try again.");
+    throw Object.assign(
+      Error(result.error || "Something went wrong. Try again."),
+      { status: response.status },
+    );
   return result;
 }
 function setPuzzle(id) {
@@ -419,15 +426,18 @@ async function submit() {
     return;
   }
   if (room) {
-    if (room.status !== "playing" || Date.now() < room.startAt) {
+    if (
+      room.status !== "playing" ||
+      Date.now() + roomClockOffset < room.startAt
+    ) {
       toast("Hold that thought. The round hasn’t started.");
       return;
     }
-    if (socket?.readyState !== 1) {
+    if (!roomOnline) {
       toast("Connection lost. Reconnect before submitting.");
       return;
     }
-    socket.send(JSON.stringify({ type: "guess", word }));
+    await sendRoomAction({ type: "guess", word });
     clearWord();
     return;
   }
@@ -601,9 +611,7 @@ function soloResult(expired = false) {
     };
 }
 function leaveRoom() {
-  connectionVersion++;
-  socket?.close();
-  socket = null;
+  stopRoomConnection(true);
   room = null;
   roomShown = "";
   history.replaceState(null, "", location.pathname);
@@ -643,77 +651,146 @@ function challengeDialog(code) {
   };
 }
 $("#race-nav").onclick = () => (room ? showRoom() : challengeDialog());
-function connectRoom(code) {
+function stopRoomConnection(leave = false) {
+  if (leave && roomCode)
+    fetch(`/api/rooms/${roomCode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "leave" }),
+      keepalive: true,
+    }).catch(() => {});
   connectionVersion++;
-  const version = connectionVersion;
-  socket?.close();
-  socket = new WebSocket(
-    `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/${encodeURIComponent(code)}`,
-  );
-  let connected = false;
-  socket.onopen = () => {
-    connected = true;
-    room = null;
-    socket.send(
-      JSON.stringify({
-        type: "join",
-        name: window.playerName || "Chai champion",
-      }),
-    );
-    history.replaceState(null, "", `?room=${code}`);
-  };
-  socket.onmessage = (e) => {
-    if (version !== connectionVersion) return;
-    const msg = JSON.parse(e.data);
-    if (msg.type === "guess") {
-      result(msg.word, msg.result);
-      return;
-    }
-    if (msg.type === "state") {
-      you = msg.you;
-      const previous = room;
-      room = msg.room;
-      const me = room.players.find((p) => p.id === you);
-      if (
-        room.round &&
-        (!previous ||
-          room.round !== previous.round ||
-          puzzle.id !== room.puzzleId)
-      )
-        setPuzzle(room.puzzleId);
-      const newWord = me.found.find((w) => !found.includes(w)),
-        changed = found.length !== me.found.length || newWord;
-      found = [...me.found];
-      if (changed) renderBoard(newWord);
-      updateControls();
-      renderRace();
-      updateClock();
-      if (
-        !previous ||
-        room.status !== previous.status ||
-        room.round !== previous.round ||
-        room.status === "waiting" ||
-        (room.status === "finished" &&
-          room.players.some((p, i) => p.ready !== previous.players[i]?.ready))
-      )
-        showRoom();
-    }
-  };
-  socket.onclose = () => {
-    if (version !== connectionVersion) return;
-    toast(
-      connected
-        ? "Room connection closed. Rejoin to reconnect."
-        : "That room is full or has expired.",
-    );
-    modal(
-      `<h2>A little connection hiccup.</h2><p>${connected ? "Reconnect within 20 seconds to keep your place in an active match." : "This room may be full or expired. Try reconnecting, or make a fresh invite."}</p><button class="primary-button" id="reconnect">Reconnect</button><button class="text-button" id="back-solo">Back to solo play</button>`,
-    );
-    $("#reconnect").onclick = () => connectRoom(code);
-    $("#back-solo").onclick = leaveRoom;
-  };
-  socket.onerror = () => {};
+  clearTimeout(roomPoll);
+  roomCode = null;
+  roomOnline = false;
 }
+function applyRoomState(msg) {
+  if (room && msg.room.code === room.code && msg.room.revision < room.revision)
+    return;
+  you = msg.you;
+  roomClockOffset = msg.serverTime - Date.now();
+  const previous = room;
+  room = msg.room;
+  const me = room.players.find((p) => p.id === you);
+  if (
+    room.round &&
+    (!previous ||
+      room.round !== previous.round ||
+      room.match !== previous.match ||
+      puzzle.id !== room.puzzleId)
+  )
+    setPuzzle(room.puzzleId);
+  const added = me.found.filter((w) => !found.includes(w)),
+    changed = found.length !== me.found.length || added.length;
+  visit.words += added.length;
+  found = [...me.found];
+  if (changed) renderBoard(added[0]);
+  renderSession();
+  updateControls();
+  renderRace();
+  updateClock();
+  const playersChanged =
+    !previous ||
+    room.players.length !== previous.players.length ||
+    room.players.some(
+      (p, i) =>
+        p.ready !== previous.players[i]?.ready ||
+        p.online !== previous.players[i]?.online ||
+        p.name !== previous.players[i]?.name,
+    );
+  if (
+    !previous ||
+    room.status !== previous.status ||
+    room.round !== previous.round ||
+    room.match !== previous.match ||
+    playersChanged
+  )
+    showRoom();
+}
+async function sendRoomAction(action) {
+  if (!roomCode) return false;
+  const version = connectionVersion,
+    code = roomCode,
+    round = room?.round,
+    match = room?.match;
+  try {
+    const msg = await api(`/api/rooms/${code}`, { ...action, round, match });
+    if (version !== connectionVersion) return false;
+    roomOnline = true;
+    if (msg.guess && room?.round === round && room?.match === match) {
+      if (msg.guess.result === "early") toast("The round hasn’t started yet.");
+      else if (msg.guess.result !== "inactive")
+        result(msg.guess.word, msg.guess.result);
+    }
+    applyRoomState(msg);
+    return true;
+  } catch (error) {
+    if (version === connectionVersion) {
+      roomOnline = false;
+      toast(error.message);
+    }
+    return false;
+  }
+}
+async function connectRoom(code) {
+  stopRoomConnection();
+  roomCode = code;
+  room = null;
+  const version = connectionVersion;
+  try {
+    const msg = await api(`/api/rooms/${code}`, {
+      type: "join",
+      name: window.playerName || "Chai champion",
+    });
+    if (version !== connectionVersion) return;
+    roomOnline = true;
+    history.replaceState(null, "", `?room=${code}`);
+    applyRoomState(msg);
+    async function poll() {
+      if (version !== connectionVersion) return;
+      try {
+        const state = await api(`/api/rooms/${code}`);
+        if (version !== connectionVersion) return;
+        roomOnline = true;
+        applyRoomState(state);
+      } catch (error) {
+        if (version !== connectionVersion) return;
+        if (roomOnline) toast(error.message);
+        roomOnline = false;
+        if ([401, 403, 404, 409].includes(error.status)) {
+          connectionError(code, error.message);
+          return;
+        }
+      }
+      if (version === connectionVersion)
+        roomPoll = setTimeout(poll, room?.status === "playing" ? 750 : 1500);
+    }
+    roomPoll = setTimeout(poll, 750);
+  } catch (error) {
+    if (version === connectionVersion) connectionError(code, error.message);
+  }
+}
+function connectionError(code, message) {
+  roomOnline = false;
+  clearTimeout(roomPoll);
+  modal(
+    `<h2>Couldn’t connect.</h2><p>${esc(message)}</p><button class="primary-button" id="reconnect">Reconnect</button><button class="text-button" id="back-solo">Back to solo</button>`,
+  );
+  $("#reconnect").onclick = () => connectRoom(code);
+  $("#back-solo").onclick = leaveRoom;
+}
+window.addEventListener("pagehide", () => {
+  if (roomCode)
+    fetch(`/api/rooms/${roomCode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "leave" }),
+      keepalive: true,
+    }).catch(() => {});
+});
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && roomCode) connectRoom(roomCode);
+});
 function renderRace() {
   const strip = $("#race-strip");
   strip.hidden = false;
@@ -724,7 +801,7 @@ function renderRace() {
 function updateClock() {
   if (!puzzle) return;
   $("#timer-label").hidden = !room && soloMode === "zen";
-  const now = Date.now();
+  const now = Date.now() + (room ? roomClockOffset : 0);
   if (room) {
     const remaining = Math.ceil((room.startAt - now) / 1000),
       status = $(".race-status");
@@ -797,8 +874,11 @@ function showRoom() {
         toast("Select and copy the invite link.");
       }
     };
-    $("#ready-button").onclick = () =>
-      socket.send(JSON.stringify({ type: "ready" }));
+    $("#ready-button").onclick = async (e) => {
+      const button = e.currentTarget;
+      button.disabled = true;
+      if (!(await sendRoomAction({ type: "ready" }))) button.disabled = false;
+    };
     $("#leave-room").onclick = leaveRoom;
     return;
   }
@@ -864,10 +944,15 @@ function showRoom() {
     $("#next-round").disabled = true;
     $("#next-round").textContent = "Waiting for your friend…";
   }
-  $("#next-round").onclick = () => {
-    socket.send(JSON.stringify({ type: finished ? "rematch" : "ready" }));
-    $("#next-round").disabled = true;
-    $("#next-round").textContent = "Waiting for your friend…";
+  $("#next-round").onclick = async (e) => {
+    const button = e.currentTarget,
+      text = button.textContent;
+    button.disabled = true;
+    button.textContent = "Waiting for your friend…";
+    if (!(await sendRoomAction({ type: finished ? "rematch" : "ready" }))) {
+      button.disabled = false;
+      button.textContent = text;
+    }
   };
   $("#leave-room").onclick = leaveRoom;
 }

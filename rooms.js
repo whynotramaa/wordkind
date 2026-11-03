@@ -1,4 +1,4 @@
-import { judgeRound, matchFinished } from "./rules.js";
+import { judgeRound, matchFinished } from "./public/rules.js";
 export function finishRound(
   room,
   winnerId = null,
@@ -6,7 +6,6 @@ export function finishRound(
   now = Date.now(),
 ) {
   if (room.status !== "playing") return false;
-  clearTimeout(room.roundTimer);
   const winner = judgeRound(room.players, winnerId);
   if (winner) room.players.find((p) => p.id === winner).score++;
   room.winner = winner;
@@ -33,7 +32,6 @@ export function finishRound(
   return true;
 }
 export function beginRound(room, now = Date.now()) {
-  clearTimeout(room.roundTimer);
   room.round++;
   room.winner = null;
   room.reason = null;
@@ -47,7 +45,6 @@ export function beginRound(room, now = Date.now()) {
   room.status = "playing";
 }
 export function resetMatch(room, ids) {
-  clearTimeout(room.roundTimer);
   room.ids = ids;
   room.round = 0;
   room.results = [];

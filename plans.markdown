@@ -1,6 +1,6 @@
 # Wordkind expansion plan
 
-This is the implementation contract for the expanded game. Preserve Bun, anonymous play, no database, no saved history, ephemeral word wallets, random opening puzzles, and share-link best-of-three matches. "More labels" is interpreted as both more levels and clearer game labels.
+This is the implementation contract for the expanded game. Preserve anonymous play and no saved history, ephemeral word wallets, random opening puzzles, and share-link best-of-three matches. "More labels" is interpreted as both more levels and clearer game labels.
 
 ## 1. Puzzle depth
 
@@ -52,7 +52,7 @@ This is the implementation contract for the expanded game. Preserve Bun, anonymo
 
 ## 7. Performance, safety and delivery
 
-- Keep zero runtime dependencies. Precompute the catalog and compressed HTTP response once; keep word checks in an in-memory Set and room updates over Bun WebSockets.
+- The original Bun implementation used no runtime dependencies. The approved serverless migration now uses Next.js/React, cached vocabulary, and expiring Redis room state with HTTP updates.
 - Bound request sizes, guesses, rooms and room lifetimes. Escape nicknames in UI and generated sharing output. Validate settings on the server.
 - Keep anonymous session cookies and room state temporary. No localStorage, analytics, database, accounts or external API calls at runtime.
 - Add meaningful Bun tests for all generated puzzle constraints, mode/date selection, settings validation, scoring/ties/timeouts, countdowns, shared puzzles, room capacity and match transitions.
@@ -71,7 +71,7 @@ Implementation and validation results will be recorded here after the expansion 
 
 All seven sections above are implemented. The catalog contains **1,440 distinct puzzles**, 240 per tier. The first version's 40 word families now include additional short and long families; a deterministic collision retry prevents repeated target/layout combinations. The catalog is precomputed and its HTTP gzip payload is about 160 KB.
 
-Solo modes, UTC Daily selection, timers, word-length chips, library navigation, recent puzzles, visit measurements, wallet search/sort/copy, room settings, progress bars, timeout/draw rules, per-round history, same-room rematches, text/PNG/native sharing, the instructional demo, sound toggle and reduced-motion behavior are present. The app has no runtime dependencies. Playwright and axe are development-only dependencies used by the preserved browser suites.
+Solo modes, UTC Daily selection, timers, word-length chips, library navigation, recent puzzles, visit measurements, wallet search/sort/copy, room settings, progress bars, timeout/draw rules, per-round history, same-room rematches, text/PNG/native sharing, the instructional demo, sound toggle and reduced-motion behavior are present. The serverless app uses Next.js and React. Playwright and axe are development-only dependencies used by the preserved browser suites.
 
 ### Verification
 
@@ -83,7 +83,7 @@ Solo modes, UTC Daily selection, timers, word-length chips, library navigation, 
 
 ### Delivery limits
 
-A Dockerfile and startup/hosting instructions are included. Public hosting is not provisioned, and the Docker image was not built here. Real-device Safari, Firefox and manual screen-reader checks were not performed. Rooms are intentionally process-local and disappear at restart. Casual play exposes the catalog to the browser; there is no prize-grade anti-cheat claim. The test suite passing is evidence for the checked behaviors, not a claim that the app can never contain a bug.
+Next.js serverless startup/hosting instructions are included. Public hosting is not provisioned. The supplied Redis credentials are configured locally and live room operations have been verified. Real-device Safari, Firefox and manual screen-reader checks were not performed. Rooms now expire in shared Redis after two hours and survive function restarts. Casual play exposes the catalog to the browser; there is no prize-grade anti-cheat claim. The test suite passing is evidence for the checked behaviors, not a claim that the app can never contain a bug.
 
 ## Mobile-first focus revision
 
@@ -98,3 +98,9 @@ Puzzle generation now varies six layout profiles and the first word's allowed di
 Seven engine/server groups pass with more than 44,000 assertions, including all six layout profiles, the allowed starting directions, harder-tier word lengths and mixed-wheel multiplicity. The browser suite explicitly measures the wheel/tool centres and symmetric spacing. Easy fits 360×740 and 390×844 without page scrolling. Automated accessibility checks include both drawers as well as the main game. An independent review approved the focused layout at desktop and both phone sizes with no material findings in that reviewed scope.
 
 The final regression pass also includes a 320×667 layout, matching Shuffle/Hint center lines and spacing, full Easy viewport fit, and seven automated accessibility surfaces. The browser test reads the actual puzzle ID from its level tooltip when checking races, rather than inferring an answer set from board geometry.
+
+## Approved Next.js serverless migration
+
+The user requested Next.js on serverless and approved temporary Upstash Redis room state. Next.js App Router renders the existing UI; Node.js route handlers replace Bun.serve. Shared Redis keys expire after two hours, with atomic compare-and-set updates and TTL preservation. Ordinary HTTP actions and polling replace WebSockets. Match/round IDs reject stale actions, private anonymous session identifiers are withheld from public snapshots, and timers are evaluated from stored timestamps on each request. No accounts or saved histories are introduced. Tests run the production Next.js build with a test-only Redis REST fixture. Provider credentials were subsequently supplied by the user and configured locally; public deployment remains outstanding.
+
+Migration verification: `bun run build` passes with a prerendered root page and dynamic Node.js API route. `bun test` passes nine test groups and over 44,000 assertions. All three production-Next browser suites pass, including the same mobile UI, two-player HTTP matches, rematches, disconnects, PNG sharing and accessibility checks. Dictionary file tracing is present in the production API bundle. A subsequent live Next.js + Upstash check passed for concurrent finishing and TTL preservation, and its temporary room was deleted. Public serverless deployment remains unverified.

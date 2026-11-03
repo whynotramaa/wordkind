@@ -1,6 +1,6 @@
-import { startServer } from "../server.js";
-const server = startServer(0),
-  base = `http://localhost:${server.port}`;
+import { startApp } from "./helpers/app-server.mjs";
+const server = await startApp(),
+  base = server.base;
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 const b = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
@@ -113,5 +113,5 @@ try {
   );
 } finally {
   await b.close();
-  server.stop(true);
+  server.stop();
 }

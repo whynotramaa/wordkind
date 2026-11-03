@@ -1,5 +1,5 @@
 import { banks, shortBanks, longBanks } from "./banks.js";
-import { tiers, perTier, totalPuzzles } from "./rules.js";
+import { tiers, perTier, totalPuzzles } from "./public/rules.js";
 export const difficulties = tiers.map((t) => t.id);
 const families = [...shortBanks, ...banks, ...longBanks];
 const minimumTargetLength = [3, 3, 4, 4, 4, 5];
