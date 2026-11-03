@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "bun scripts/build-puzzles.mjs && next dev",
     "start": "next start",
     "test": "bun test",
-    "test:browser": "bun test/browser.mjs && bun test/accessibility.mjs && bun test/edge.mjs",
-    "build": "next build",
+    "test:browser": "bun test/startup.mjs && bun test/browser.mjs && bun test/accessibility.mjs && bun test/edge.mjs",
+    "build": "bun scripts/build-puzzles.mjs && next build",
     "test:live": "bun --env-file=.env.local test/live-redis.mjs"
   },
   "devDependencies": {

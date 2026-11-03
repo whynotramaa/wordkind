@@ -26,7 +26,11 @@ Keep both variables server-side. Do not prefix them with `NEXT_PUBLIC_` or put c
 
 Import the project into a Next.js-compatible serverless host, such as Vercel. Use the Next.js framework preset, `bun install --frozen-lockfile` for installation and `bun run build` for the build. Add the two Upstash environment variables to the deployment environment and deploy. Use a Redis region close to your function region to reduce match-update latency.
 
-The root page is prerendered. API requests use App Router route handlers with the Node.js runtime. Room updates use ordinary HTTP requests, so deployments do not need a persistent server, WebSocket process, background interval, cron job, or sticky session. Multiple function instances share the same Redis room state.
+The root page is prerendered. `bun run build` generates all 1,440 puzzles before compiling Next.js. The browser preloads a compact catalog from a content-hashed static JSON file. That file has a one-year immutable cache lifetime; changing the puzzles changes the filename. Keep `lib/puzzle-catalog.js` and its referenced `public/puzzles.*.json` together in version control. `bun run dev` also regenerates them.
+
+Puzzle loading runs independently of the anonymous session request. Room creation and joining wait for the session cookie. The server reads the same generated catalog, so fresh function instances do not regenerate boards. The existing `/api/puzzles` endpoint remains available for clients that need expanded puzzle data.
+
+API requests use App Router route handlers with the Node.js runtime. Room updates use ordinary HTTP requests, so deployments do not need a persistent server, WebSocket process, background interval, cron job, or sticky session. Multiple function instances share the same Redis room state.
 
 The build traces `words.txt` into the API deployment. `next.config.js` explicitly includes it. Upstash HTTP access uses native `fetch`; there is no Redis connection pool or client SDK to configure.
 
@@ -70,7 +74,7 @@ First to fill the puzzle earns a point. At the deadline, most completed target w
 
 The server decides scores. Redis compare-and-set operations atomically apply updates, including simultaneous finishing submissions. Stale moves carry their round and match identifiers and cannot affect a later round or rematch. Browser clocks are adjusted using server timestamps.
 
-Your actions receive an immediate response. During play the opponent’s state is polled about every 750 ms; waiting and finished rooms poll about every 1.5 seconds. Redis requests count toward your provider’s usage. Match updates are not pushed over WebSockets.
+Your actions receive an immediate response. During play the opponent’s state is polled at a target interval of 250 ms; waiting and finished rooms target 750 ms. Requests never overlap within the polling loop. Unchanged polls skip Redis writes until a 1.5-second heartbeat is due. Redis requests count toward your provider’s usage. Match updates are not pushed over WebSockets.
 
 The invite includes a pastel QR code and copyable room link. Share it as a designed PNG or through native image sharing. The QR disappears once your friend joins so the lobby can focus on Ready. Scorecards also include a colored QR and game link. Copy the result text, download a PNG, or use native image sharing where supported.
 

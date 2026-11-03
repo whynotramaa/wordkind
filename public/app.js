@@ -1,4 +1,5 @@
 import { tiers, dailyId } from "/rules.js";
+import { expandCatalog } from "/catalog.js";
 import {
   timeLabel,
   scoreText,
@@ -120,7 +121,15 @@ $("#dialog").addEventListener("click", (e) => {
       closeDialog();
   }
 });
+// Start the private session in parallel, but never hold up a solo puzzle for it.
+const sessionReady = fetch("/api/session", {
+  signal: AbortSignal.timeout(10000),
+}).then((response) => {
+  if (!response.ok) throw Error("Couldn’t start your session. Refresh to retry.");
+});
+sessionReady.catch(() => {});
 async function api(path, data) {
+  if (path.startsWith("/api/rooms")) await sessionReady;
   const response = await fetch(path, {
     signal: AbortSignal.timeout(10000),
     method: data ? "POST" : "GET",
@@ -1292,12 +1301,9 @@ function flyToWallet(word) {
     .catch(() => token.remove());
 }
 try {
-  const [session, data] = await Promise.all([
-    api("/api/session"),
-    api("/api/puzzles"),
-  ]);
-  you = session.id;
-  puzzles = data;
+  puzzles = expandCatalog(
+    await api(document.querySelector("script[data-catalog]").dataset.catalog),
+  );
   randomPuzzle();
   const code = new URLSearchParams(location.search).get("room");
   if (code) challengeDialog(code);

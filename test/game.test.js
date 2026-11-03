@@ -7,7 +7,8 @@ import {
 } from "../public/rules.js";
 import { beginRound, finishRound, resetMatch } from "../rooms.js";
 import { banks } from "../banks.js";
-import { puzzles, makePuzzle, canSpell, checkGuess } from "../game.js";
+import { puzzles, canSpell, checkGuess } from "../game.js";
+import { makePuzzle } from "../lib/puzzle-generator.js";
 
 const dictionary = new Set(
   (await Bun.file(new URL("../words.txt", import.meta.url)).text())
@@ -19,7 +20,13 @@ describe("puzzles", () => {
     expect(puzzles).toHaveLength(1440);
     const signatures = new Set();
     for (const p of puzzles) {
-      expect(p).toEqual(makePuzzle(p.id));
+      const generated = makePuzzle(p.id);
+      expect(p).toEqual({
+        ...generated,
+        slots: generated.slots.map(({ word, cells, dx, dy }) => ({
+          word, cells, dx, dy,
+        })),
+      });
       expect([...p.wheel].sort().join("")).toBe([...p.letters].sort().join(""));
       expect((p.wheel + p.wheel).includes(p.letters)).toBe(false);
       const reverse = [...p.wheel].reverse().join("");
