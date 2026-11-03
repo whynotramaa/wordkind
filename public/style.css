@@ -1840,3 +1840,56 @@ dialog::backdrop {
     grid-template-columns: 84px 1fr 84px;
   }
 }
+.invite-share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 18px 0 8px;
+}
+.invite-share img {
+  display: block;
+  width: 188px;
+  height: 188px;
+  max-width: 100%;
+  border-radius: 18px;
+}
+.invite-share .text-button {
+  font-size: 12px;
+  min-height: 36px;
+  padding: 7px 0;
+  color: #70517f;
+}
+.score-share-link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed #ccd2c0;
+}
+.score-share-link img {
+  display: block;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+.score-share-link strong {
+  display: block;
+  font:
+    800 14px Manrope,
+    sans-serif;
+  color: #405d42;
+}
+.score-share-link a {
+  display: block;
+  font-size: 11px;
+  color: #70517f;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  text-underline-offset: 3px;
+}
+.score-share-link > div {
+  min-width: 0;
+}

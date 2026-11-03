@@ -1,5 +1,12 @@
 import { tiers, dailyId } from "/rules.js";
-import { timeLabel, scoreText, downloadScore, shareScore } from "/sharing.js";
+import {
+  timeLabel,
+  scoreText,
+  downloadScore,
+  shareScore,
+  qrSource,
+  shareInvite,
+} from "/sharing.js";
 const $ = (s) => document.querySelector(s);
 const icons = {
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
@@ -863,8 +870,23 @@ function showRoom() {
       me = room.players.find((p) => p.id === you),
       other = room.players.find((p) => p.id !== you);
     modal(
-      `<h2>Your friend has been<br>officially challenged.</h2><p>Share this link. Both players tap Ready.</p><div class="room-rules">${esc(tiers.find((t) => t.id === room.settings.difficulty).name)} · ${room.settings.seconds / 60} min / round · Best of 3</div><div class="room-link"><input id="invite-link" aria-label="Room invite link" value="${esc(url)}" readonly><button id="copy-link">Copy</button></div><div class="ready-players"><span>${esc(me.name)}${me.ready ? " · Ready" : ""}</span><span>${other ? esc(other.name) + (!other.online ? " · Offline" : other.ready ? " · Ready" : " · Joined") : "Waiting for friend…"}</span></div><button class="primary-button" id="ready-button" ${me.ready ? "disabled" : ""}>${me.ready ? "Ready. Waiting for your friend…" : "I’m ready"}</button><p class="room-note">${other && !other.online ? "Your friend is offline. They can reopen this link to reconnect." : "Best of three. No hints. No excuses. Maybe one chai."}</p><button class="text-button" id="leave-room">Leave room</button>`,
+      `<h2>Invite a friend<span class="brand-dot">.</span></h2><div class="room-rules">${esc(tiers.find((t) => t.id === room.settings.difficulty).name)} · ${room.settings.seconds / 60} min / round · Best of 3</div>${!other ? `<div class="invite-share"><img id="invite-qr" src="${qrSource(url)}" width="188" height="188" alt="Scan to join this Wordkind room"><button class="text-button" id="share-invite">Share invite <span data-icon="arrow"></span></button></div>` : ""}<div class="room-link"><input id="invite-link" aria-label="Room invite link" value="${esc(url)}" readonly><button id="copy-link">Copy</button></div><div class="ready-players"><span>${esc(me.name)}${me.ready ? " · Ready" : ""}</span><span>${other ? esc(other.name) + (!other.online ? " · Offline" : other.ready ? " · Ready" : " · Joined") : "Waiting for friend…"}</span></div><button class="primary-button" id="ready-button" ${me.ready ? "disabled" : ""}>${me.ready ? "Ready. Waiting for your friend…" : "I’m ready"}</button><p class="room-note">${other && !other.online ? "Your friend is offline. They can reopen this link to reconnect." : "Best of three. No hints. No excuses. Maybe one chai."}</p><button class="text-button" id="leave-room">Leave room</button>`,
     );
+    if ($("#share-invite"))
+      $("#share-invite").onclick = async (e) => {
+        const button = e.currentTarget;
+        button.disabled = true;
+        try {
+          const action = await shareInvite(url);
+          if (action === "downloaded")
+            toast("Invite saved. Send it to your favourite rival.");
+        } catch (error) {
+          if (error.name !== "AbortError")
+            toast("Couldn’t share the invite. Copy the link instead.");
+        } finally {
+          button.disabled = false;
+        }
+      };
     $("#copy-link").onclick = async () => {
       try {
         await navigator.clipboard.writeText(url);
@@ -1038,7 +1060,7 @@ async function copyText(text, message = "Copied. Group chat, here we come.") {
 }
 function renderScore(card, actions) {
   modal(
-    `<div class="score-scene"><div class="result-confetti" aria-hidden="true">${Array.from({ length: 16 }, (_, i) => `<i style="--i:${i};--c:${["#b5cb96", "#a78dbd", "#e4ca7b", "#ed827c"][i % 4]}"></i>`).join("")}</div><div class="dialog-symbol"><span>${card.title.includes("Clock") ? "C" : "W"}</span><span>${card.title.includes("Clock") ? "H" : "A"}</span><span>${card.title.includes("Clock") ? "A" : "H"}</span></div><div class="score-paper"><span class="score-brand">wordkind.</span><h2>${esc(card.title).replace(/\n/g, "<br>")}</h2><p>${esc(card.subtitle)}</p><div class="score-players ${card.match ? "duel" : ""}">${card.players.map((p) => `<div><span>${esc(p.name)}</span><b>${p.score}</b>${card.match ? "" : "<small>words found</small>"}</div>`).join("")}</div>${card.rounds.length ? `<div class="round-history">${card.rounds.map((r) => `<div><span>Round ${r.round}</span><strong>${esc(r.label)}</strong><span>${timeLabel(r.elapsedMs)}</span></div>`).join("")}</div>` : ""}<div class="score-details">${card.details.map((d) => `<div><span>${esc(d.label)}</span><b>${esc(d.value)}</b></div>`).join("")}</div><div class="score-stamp">${card.match ? "BRAGGING RIGHTS" : "CHAI APPROVED"}<br>OFFICIALLY EARNED</div></div><div class="score-actions"><button id="download-score" class="text-button">Save PNG</button><button id="copy-score" class="text-button">Copy result</button><button id="native-share" class="text-button">Share</button></div>${actions}</div>`,
+    `<div class="score-scene"><div class="result-confetti" aria-hidden="true">${Array.from({ length: 16 }, (_, i) => `<i style="--i:${i};--c:${["#b5cb96", "#a78dbd", "#e4ca7b", "#ed827c"][i % 4]}"></i>`).join("")}</div><div class="dialog-symbol"><span>${card.title.includes("Clock") ? "C" : "W"}</span><span>${card.title.includes("Clock") ? "H" : "A"}</span><span>${card.title.includes("Clock") ? "A" : "H"}</span></div><div class="score-paper"><span class="score-brand">wordkind.</span><h2>${esc(card.title).replace(/\n/g, "<br>")}</h2><p>${esc(card.subtitle)}</p><div class="score-players ${card.match ? "duel" : ""}">${card.players.map((p) => `<div><span>${esc(p.name)}</span><b>${p.score}</b>${card.match ? "" : "<small>words found</small>"}</div>`).join("")}</div>${card.rounds.length ? `<div class="round-history">${card.rounds.map((r) => `<div><span>Round ${r.round}</span><strong>${esc(r.label)}</strong><span>${timeLabel(r.elapsedMs)}</span></div>`).join("")}</div>` : ""}<div class="score-details">${card.details.map((d) => `<div><span>${esc(d.label)}</span><b>${esc(d.value)}</b></div>`).join("")}</div><div class="score-share-link"><img src="${qrSource(location.origin)}" width="100" height="100" alt="Scan to play Wordkind"><div><strong>Pass the word.</strong><a href="${esc(location.origin)}">${esc(location.host)}</a></div></div></div><div class="score-actions"><button id="download-score" class="text-button">Save PNG</button><button id="copy-score" class="text-button">Copy result</button><button id="native-share" class="text-button">Share</button></div>${actions}</div>`,
   );
   $("#download-score").onclick = async () => {
     try {

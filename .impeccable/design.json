@@ -90,7 +90,19 @@
         "name": "small-phone-max",
         "value": "359px"
       }
-    ]
+    ],
+    "qr": {
+      "sage": "#405d42",
+      "purple": "#70517f",
+      "paper": "#fffef9",
+      "frame": "#e6e0f5",
+      "quietZoneModules": 4,
+      "errorCorrection": "H",
+      "moduleCornerRadius": 1.25,
+      "moduleSize": 6,
+      "inviteDisplaySize": "188px",
+      "scoreExportSize": "215px"
+    }
   },
   "components": [
     {

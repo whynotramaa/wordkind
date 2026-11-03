@@ -76,6 +76,11 @@ try {
   await p.locator("#menu-button").click();
   await p.locator("#race-nav").click();
   await audit("invite form");
+  await p.locator("#create-room").click();
+  await p.locator("#invite-qr").waitFor();
+  await p.locator("#invite-qr").evaluate((img) => img.decode());
+  await audit("invite QR");
+
   await p.locator("#close-dialog").click();
   await p.emulateMedia({ reducedMotion: "reduce" });
   await p.locator("#menu-button").click();

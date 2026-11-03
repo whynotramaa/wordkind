@@ -72,7 +72,7 @@ The server decides scores. Redis compare-and-set operations atomically apply upd
 
 Your actions receive an immediate response. During play the opponent’s state is polled about every 750 ms; waiting and finished rooms poll about every 1.5 seconds. Redis requests count toward your provider’s usage. Match updates are not pushed over WebSockets.
 
-The scorecard includes actual nicknames, scores, round results and desi humour. Copy the text, download a PNG, or use native image sharing where supported.
+The invite includes a pastel QR code and copyable room link. Share it as a designed PNG or through native image sharing. The QR disappears once your friend joins so the lobby can focus on Ready. Scorecards also include a colored QR and game link. Copy the result text, download a PNG, or use native image sharing where supported.
 
 ## Temporary state and reconnects
 
@@ -107,6 +107,7 @@ The fixture models the Redis commands used by the app. A live Next.js + Upstash 
 | `lib/api.js` | HTTP validation and stateless solo endpoints |
 | `lib/room-service.js` | Multiplayer actions, presence and timestamp-based transitions |
 | `lib/room-store.js` | Upstash REST storage and atomic compare-and-set |
+| `lib/qr.js` | Styled QR generation and validation of share destinations |
 | `rooms.js` | Shared round scoring and resets |
 | `public/rules.js` | Shared difficulty and daily-puzzle rules |
 | `game.js`, `banks.js` | Deterministic puzzle generation and vocabulary |
@@ -120,3 +121,5 @@ The catalog reuses curated letter families across distinct target sets and layou
 The migration follows [Next.js route handlers](https://nextjs.org/docs/app/getting-started/route-handlers), [file tracing](https://nextjs.org/docs/app/api-reference/config/next-config-js/output), and [Upstash’s Redis REST API](https://upstash.com/docs/redis/features/restapi). Atomic writes use Redis `EVAL` with compare-and-set and preserve the room TTL.
 
 The bonus dictionary comes from [word-list](https://github.com/sindresorhus/word-list); see `WORDS-LICENSE`. Manrope and DM Sans are self-hosted under the SIL Open Font License, with license files in `public/assets/`. The original SVG icon follows the supplied visual reference. Reference screenshots are not bundled as game assets.
+
+QR codes use the local `qrcode` encoder with high error correction, rounded purple/sage modules, a cream quiet zone and lilac frame. No QR service receives room links. Tests decode the actual on-screen QR and exported invite/scorecard PNGs, including phone sizes and long preview URLs. Physical phone-camera scanning has not been checked.

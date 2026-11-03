@@ -1,3 +1,9 @@
+import jsQR from "jsqr";
+import { PNG } from "pngjs";
+function decodeQr(bytes) {
+  const png = PNG.sync.read(bytes);
+  return jsQR(new Uint8ClampedArray(png.data), png.width, png.height)?.data;
+}
 import { startApp } from "./helpers/app-server.mjs";
 const server = await startApp(),
   base = server.base;
@@ -116,6 +122,7 @@ try {
   await page.locator("#download-score").click();
   const file = await download;
   await file.saveAs(`${dir}/scorecard.png`);
+  assert.equal(decodeQr(fs.readFileSync(`${dir}/scorecard.png`)), `${base}/`);
   assert.equal(file.suggestedFilename(), "wordkind-scorecard.png");
   await page.screenshot({ path: `${dir}/solo-result.png`, fullPage: true });
   await page.locator("#next-solo").click();
@@ -217,6 +224,28 @@ try {
   await page.locator("#invite-link").waitFor();
   assert.match(await page.locator(".room-rules").innerText(), /Breezy.*1 min/);
   const link = await page.locator("#invite-link").inputValue();
+  await page.locator("#invite-qr").evaluate((img) => img.decode());
+  assert.equal(decodeQr(await page.locator("#invite-qr").screenshot()), link);
+  const inviteDownload = page.waitForEvent("download");
+  await page.locator("#share-invite").click();
+  await (await inviteDownload).saveAs(`${dir}/invite-card.png`);
+  assert.equal(decodeQr(fs.readFileSync(`${dir}/invite-card.png`)), link);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+  );
+  assert.equal(
+    await page
+      .locator("#dialog")
+      .evaluate((e) => e.scrollWidth > e.clientWidth),
+    false,
+  );
+  await page.screenshot({ path: `${dir}/invite-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1100 });
+
   await page.screenshot({ path: `${dir}/invite.png`, fullPage: true });
   const friend = await make(390, 1000);
   await friend.page.goto(link);

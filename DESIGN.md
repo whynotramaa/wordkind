@@ -192,3 +192,7 @@ Native dialogs provide a visible close button and heading. The optional demonstr
 - Don't turn the temporary wallet into cash, coins or paid rewards.
 - Don't invent player activity, scores or saved streaks.
 - Don't add perpetual decorative motion or rely on colour alone.
+
+## Sharing QR
+
+Invites and scorecard exports use a rounded QR code with sage `#405d42` and purple `#70517f` modules, cream `#fffef9` quiet space, a lilac `#e6e0f5` frame and small coral/mint corner dots outside the scan area. Preserve the four-module quiet zone and three finder patterns. The invite presents its link next to a native-share/PNG action; scorecards keep a QR footer with the visible game URL. Decoder checks cover the rendered phone-sized code and exported PNGs.

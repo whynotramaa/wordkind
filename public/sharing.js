@@ -1,3 +1,11 @@
+export const qrSource = (target) =>
+  `/api/qr?target=${encodeURIComponent(target)}`;
+async function qrImage(target) {
+  const image = new Image();
+  image.src = qrSource(target);
+  await image.decode();
+  return image;
+}
 export const timeLabel = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -25,8 +33,22 @@ function fit(ctx, text, maxWidth, start, min = 24) {
   }
   return size;
 }
+function wrapLink(ctx, value, width) {
+  const lines = [];
+  let line = "";
+  for (const c of value) {
+    if (line && ctx.measureText(line + c).width > width) {
+      lines.push(line);
+      line = "";
+    }
+    line += c;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
 export async function scoreImage(card) {
   await document.fonts.ready;
+  const qr = await qrImage(location.origin);
   const c = document.createElement("canvas");
   c.width = 1080;
   c.height = 1350;
@@ -124,8 +146,13 @@ export async function scoreImage(card) {
     x.textAlign = "left";
     y += 60;
   }
-  text("No sign-ups. Just words & bragging rights.", 115, 1200, 24, "#606657");
-  text("WORDKIND · FRIENDLY BY NATURE", 115, 1240, 17, "#72638e");
+  x.drawImage(qr, 115, 1040, 215, 215);
+  text("Pass the word.", 365, 1110, 32, "#405d42", true);
+  text("Scan for a little wordplay.", 365, 1152, 24, "#606657");
+  x.font = "400 20px DM";
+  wrapLink(x, location.origin, 570).forEach((line, i) =>
+    text(line, 365, 1182 + i * 24, 20, "#70517f"),
+  );
   return new Promise((resolve, reject) =>
     c.toBlob(
       (blob) =>
@@ -157,5 +184,75 @@ export async function shareScore(card) {
     return "shared";
   }
   await downloadScore(card);
+  return "downloaded";
+}
+
+export async function inviteImage(target) {
+  await document.fonts.ready;
+  const qr = await qrImage(target),
+    canvas = document.createElement("canvas");
+  canvas.width = 720;
+  const ctx = canvas.getContext("2d");
+  ctx.font = "400 18px DM";
+  const words = wrapLink(ctx, target, 564);
+  canvas.height = Math.max(960, 850 + words.length * 25 + 70);
+  ctx.fillStyle = "#e6e0f5";
+  ctx.fillRect(0, 0, 720, canvas.height);
+  ctx.fillStyle = "#fffef9";
+  ctx.beginPath();
+  ctx.roundRect(35, 35, 650, canvas.height - 70, 25);
+  ctx.fill();
+  for (let y = 65; y < canvas.height - 35; y += 30) {
+    ctx.fillStyle = "#e6e0f5";
+    for (const x of [35, 685]) {
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const text = (value, x, y, size, color = "#303a30") => {
+    ctx.font = `800 ${size}px Manrope`;
+    ctx.fillStyle = color;
+    ctx.fillText(value, x, y);
+  };
+  text("wordkind.", 78, 107, 32);
+  text("Chai later.", 78, 190, 48);
+  text("Wordplay now.", 78, 250, 48);
+  ctx.drawImage(qr, 160, 290, 400, 400);
+  text("Scan. Join. Game on.", 160, 746, 25, "#405d42");
+  ctx.font = "400 18px DM";
+  ctx.fillStyle = "#70517f";
+  words.forEach((line, i) => ctx.fillText(line, 78, 810 + i * 25));
+  ctx.fillStyle = "#606657";
+  ctx.fillText(
+    "Best of three. A little friendly trouble.",
+    78,
+    canvas.height - 75,
+  );
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (blob) =>
+        blob ? resolve(blob) : reject(Error("Could not create your invite.")),
+      "image/png",
+    ),
+  );
+}
+export async function shareInvite(target) {
+  const blob = await inviteImage(target),
+    file = new File([blob], "wordkind-invite.png", { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({
+      files: [file],
+      title: "A little friendly Wordkind",
+      text: target,
+    });
+    return "shared";
+  }
+  const url = URL.createObjectURL(blob),
+    link = document.createElement("a");
+  link.href = url;
+  link.download = "wordkind-invite.png";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   return "downloaded";
 }

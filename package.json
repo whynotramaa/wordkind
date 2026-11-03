@@ -12,11 +12,15 @@
     "test:live": "bun --env-file=.env.local test/live-redis.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "jsqr": "^1.4.0",
     "playwright": "1.64.1",
-    "@axe-core/playwright": "4.14.0"
+    "pngjs": "^7.0.0",
+    "sharp": "^0.35.5"
   },
   "dependencies": {
     "next": "16.4.4",
+    "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
